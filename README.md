@@ -1,17 +1,17 @@
 # rabbit
-一堆java常用工具的整理封装。高内聚！低耦合！无其他私有包的依赖！拷来即用。企业开发？接外包？赚外快？还是学习？选rabbit就对了~~~
+  一堆java常用工具的整理封装。高内聚！低耦合！无其他私有包的依赖！拷来即用。企业开发？接外包？赚外快？还是学习？选rabbit就对了~~~
 
 ## 技术栈
 - jdk 1.8
 - SpringBoot 2.0.5
 
 ## 服务结构
-rabbit/
-├── rabbit-caffeine
-├── rabbit-client
-├── rabbit-common
-├── pom.xml
-└── README.md
+rabbit/<br>
+├── rabbit-caffeine<br>
+├── rabbit-client<br>
+├── rabbit-common<br>
+├── pom.xml<br>
+└── README.md<br>
 
 ## 微服务概述
 - rabbit-client：一款集结了httpclient5、restTemplate和webClient的http客户端链接工具，仅需使用以下两个关键注解即可发送http请求
