@@ -3,11 +3,11 @@
 
 ## 技术栈
 - jdk 1.8
-- SpringBoot 2.0.5
+- SpringBoot 2.1.6
 
 ## rabbit服务概述
 ### rabbit-client
-&emsp;&emsp;一款集结了httpclient5、restTemplate和webClient的http客户端链接工具，仅需使用以下两个关键注解即可发送http请求
+&emsp;&emsp;一款集结了httpclient、restTemplate和webClient的http客户端链接工具，仅需使用以下两个关键注解即可发送http请求
 - @Remote(url = "http://localhost:8080/api",headers = {@RemoteHeader(name = "token",value = "xxxxx")})
 - @RemoteRequestMapping(path = "/xxx/{id}",type = HttpclientTypeEnum.WEB_CLIENT)
 
