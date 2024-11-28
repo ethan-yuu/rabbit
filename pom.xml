@@ -11,10 +11,9 @@
     <name>${project.artifactId}</name>
 
     <modules>
-        <module>rabbit-caffeine</module>
+        <module>rabbit-multilevel-cache</module>
         <module>rabbit-client</module>
         <module>rabbit-redis</module>
-        <module>rabbit-web</module>
         <module>rabbit-file</module>
     </modules>
 
