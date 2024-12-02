@@ -16,9 +16,11 @@ import org.ethan.rabbit.client.annotation.RemoteReqHeader;
 import org.ethan.rabbit.client.annotation.RemoteRequestMapping;
 import org.ethan.rabbit.client.common.model.Result;
 import org.ethan.rabbit.client.enums.HttpClientTypeEnum;
+import org.ethan.rabbit.client.strategy.HttpClientStrategy;
 import org.ethan.rabbit.client.strategy.context.HttpClientContext;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.util.ReflectionUtils;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -68,16 +70,36 @@ public class HttpClientProxy implements MethodInterceptor {
                 }
             }
         }
+
         RemoteRequestMapping remoteRequestMapping = method.getAnnotation(RemoteRequestMapping.class);
+
         if (ObjectUtils.isNotEmpty(remoteRequestMapping)) {
             String path = remoteRequestMapping.path();
             HttpClientTypeEnum type = remoteRequestMapping.type();
+            RequestMethod methodType = remoteRequestMapping.method();
+
             Map<String, String> params = new HashMap<>();
             url = url + getParamPathAndSetReqParams(method, args, path, headers, params);
 
-            String response = HttpClientContext.INSTANCE
-                    .getInstance(type)
-                    .doPost(url, params, headers, new Object(), String.class);
+            HttpClientStrategy instance = HttpClientContext.INSTANCE.getInstance(type);
+            String response = new Result<>().toString();
+
+            switch (methodType) {
+                case GET:
+                    response = instance.doGet(url, params, headers, String.class);
+                    break;
+                case POST:
+                    response = instance.doPost(url, params, headers, new Object(), String.class);
+                    break;
+                case DELETE:
+                    response = instance.doDelete(url, params, headers, String.class);
+                    break;
+                case PUT:
+                    response = instance.doPut(url, params, headers, new Object(), String.class);
+                    break;
+                default:
+                    throw new RuntimeException("远程调用方法类型错误");
+            }
 
             return getResponse(method, response);
 
@@ -92,8 +114,8 @@ public class HttpClientProxy implements MethodInterceptor {
      * @param path
      * @return
      */
-    private String getParamPathAndSetReqParams(Method method, Object[] args, String path, Map<String,String> headers,Map<String,String> params) {
-        if(ArrayUtils.isNotEmpty(args)){
+    private String getParamPathAndSetReqParams(Method method, Object[] args, String path, Map<String, String> headers, Map<String, String> params) {
+        if (ArrayUtils.isNotEmpty(args)) {
             //参数注解，1维是参数，2维是注解
             Annotation[][] annotations = method.getParameterAnnotations();
             String[] paramNames = getParamterNames(method);
@@ -103,12 +125,12 @@ public class HttpClientProxy implements MethodInterceptor {
                 Annotation[] paramAnn = annotations[i];
                 boolean isBean = isBean(param);
                 if (isBean) {
-                    Map<String, String> beanParamsMap = objectToMap(param,new HashMap<>());
+                    Map<String, String> beanParamsMap = objectToMap(param, new HashMap<>());
                     params.putAll(beanParamsMap);
                 } else {
                     params.put(paramName, param.toString());
                 }
-                if (ArrayUtils.isNotEmpty(paramAnn)){
+                if (ArrayUtils.isNotEmpty(paramAnn)) {
                     for (Annotation annotation : paramAnn) {
                         if (annotation.annotationType().equals(RemotePathParam.class)) {
                             RemotePathParam remotePathParam = (RemotePathParam) annotation;
@@ -138,7 +160,7 @@ public class HttpClientProxy implements MethodInterceptor {
      * @param method
      * @return
      */
-    public  String[] getParamterNames(Method method) {
+    public String[] getParamterNames(Method method) {
         DefaultParameterNameDiscoverer dpnd = new DefaultParameterNameDiscoverer();
         String[] params = dpnd.getParameterNames(method);
         return params;
@@ -165,7 +187,7 @@ public class HttpClientProxy implements MethodInterceptor {
 
         if (jsonResult.startsWith(JSON_OBJ_PREFIX)) {
             result = JSON.parseObject(jsonResult, returnType);
-            covertJsonObject2Bean(method,result);
+            covertJsonObject2Bean(method, result);
         } else if (jsonResult.startsWith(JSON_ARRAY_PREFIX)) {
             try {
                 //获取具体集合的泛型类型
@@ -176,7 +198,7 @@ public class HttpClientProxy implements MethodInterceptor {
 //                result = objectMapper.readValue(jsonResult, returnType);
             } catch (Exception e) {
                 log.error(e.getMessage(), e);
-                result = JSONObject.parseObject(jsonResult ,returnType);
+                result = JSONObject.parseObject(jsonResult, returnType);
             }
         } else {
             result = getNotJsonResult(method, jsonResult);
@@ -329,23 +351,23 @@ public class HttpClientProxy implements MethodInterceptor {
     }
 
 
-    private  Map<String, String> objectToMap(Object obj, Map<String, String> map){
+    private Map<String, String> objectToMap(Object obj, Map<String, String> map) {
         Field[] fields = obj.getClass().getDeclaredFields();
-        for(int i = 0, len = fields.length; i < len ; i++){
+        for (int i = 0, len = fields.length; i < len; i++) {
             String varName = fields[i].getName();
             try {
                 fields[i].setAccessible(true);
                 Object o = fields[i].get(obj);
-                if(o != null){
-                    if(this.isBean(o)){
-                        objectToMap(o,map);
-                    }else{
+                if (o != null) {
+                    if (this.isBean(o)) {
+                        objectToMap(o, map);
+                    } else {
                         map.put(varName, o.toString());
                     }
 
                 }
             } catch (IllegalArgumentException | IllegalAccessException e) {
-                log.error(e.getMessage(),e);
+                log.error(e.getMessage(), e);
             }
         }
         return map;
@@ -356,10 +378,10 @@ public class HttpClientProxy implements MethodInterceptor {
      * 获取泛型类，比如USER<T>
      * @return 返回T
      */
-    private Class<?>  getEntityClz(Class clz){
+    private Class<?> getEntityClz(Class clz) {
 
         Type t = clz.getGenericInterfaces()[0];
-        if(t instanceof ParameterizedType) {
+        if (t instanceof ParameterizedType) {
             Type[] p = ((ParameterizedType) t).getActualTypeArguments();
             return (Class<?>) p[0];// 获取第一个类型参数的真实类型
         }
@@ -372,27 +394,27 @@ public class HttpClientProxy implements MethodInterceptor {
      * @param method
      * @return
      */
-    public Class<?> getMethodReturnType(Method method){
+    public Class<?> getMethodReturnType(Method method) {
         Type type = method.getGenericReturnType();// 获取返回值类型
         if (type instanceof ParameterizedType) { // 判断获取的类型是否是参数类型
             Type[] returnTypes = ((ParameterizedType) type).getActualTypeArguments();// 强制转型为带参数的泛型类型，
             // getActualTypeArguments()方法获取类型中的实际类型，如map<String,Integer>中的
             // String，integer因为可能是多个，所以使用数组
-            return (Class<?>)returnTypes[0];
+            return (Class<?>) returnTypes[0];
         }
         return null;
     }
 
 
-    private void covertJsonObject2Bean(Method method,Object result){
+    private void covertJsonObject2Bean(Method method, Object result) {
         ReflectionUtils.doWithFields(result.getClass(), field -> {
             ReflectionUtils.makeAccessible(field);
             Object value = field.get(result);
-            if(isCollectionOrIsMapOrIsArrays(value)){
+            if (isCollectionOrIsMapOrIsArrays(value)) {
                 Class returnType = getMethodReturnType(method);
                 String json = JSON.toJSONString(value);
-                value = JSON.parseArray(json,returnType);
-                field.set(result,value);
+                value = JSON.parseArray(json, returnType);
+                field.set(result, value);
             }
 
         });

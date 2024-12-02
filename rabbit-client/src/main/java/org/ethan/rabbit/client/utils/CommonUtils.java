@@ -29,9 +29,5 @@ public class CommonUtils {
                 ));
     }
 
-    public static void checkParamIsNotNull(String... param) {
-
-    }
-
 
 }

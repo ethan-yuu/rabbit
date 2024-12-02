@@ -25,10 +25,6 @@ public enum HttpClientContext {
     private Map<HttpClientTypeEnum, Class<HttpClientStrategy>> strategyMap = new ConcurrentHashMap<>();
 
 
-    public HttpClientStrategy getInstance(HttpClientTypeEnum type) {
-        return this.getHttpClientStrategyByType(type);
-    }
-
     public <T> void init(String packageName) {
         Reflections reflections = new Reflections(packageName);
         // 会去扫描被 @HttpClient 标注的类
@@ -41,11 +37,14 @@ public enum HttpClientContext {
         }
     }
 
+    public HttpClientStrategy getInstance(HttpClientTypeEnum type) {
+        return this.getHttpClientStrategyByType(type);
+    }
+
     private HttpClientStrategy getHttpClientStrategyByType(HttpClientTypeEnum type) {
         Class<HttpClientStrategy> clz = strategyMap.get(type);
         Assert.notNull(clz, "type:" + type + "can not found class,please checked");
         return SpringContextHolder.getBean(clz);
     }
-
 
 }
